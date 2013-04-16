@@ -7,6 +7,7 @@
 // Description : code for the Forecasting Newsvendor model with additive MMFE
 //============================================================================
 // Require the Boost C++ Library (http://www.boost.org/)
+// Compile: g++ -std=c++11 -fopenmp -O3 -I /usr/local/boost_1_53_0 -o FNV-aMMFE.exe FNV-aMMFE.cpp
 //***********************************************************
 
 #include <iostream>
@@ -197,9 +198,9 @@ int main(void)
     T = 0.9;
     lambda = 0.2;
 
-    //for (stdev=0.05; stdev<=0.32; stdev+=0.05)
-    //for (T=0.1; T<=0.91; T+=0.1)
-    //for (lambda=0.02; lambda<=0.21; lambda+=0.02)
+    for (stdev=0.05; stdev<=0.32; stdev+=0.05)
+    for (T=0.1; T<=0.91; T+=0.1)
+    for (lambda=0.02; lambda<=0.21; lambda+=0.02)
     {
         double startTime = omp_get_wtime();
 
@@ -315,100 +316,100 @@ int main(void)
         knuth_b re(12345);     //define a knuth_b random engine with seed 12345
         normal_distribution<> nd;   //define a Normal distribution
 
-		//calculate expected cost by simulation
-		//average over RUN=1,000,000 runs
-		double V_Multi_sum=0, V_Multi_sqr_sum=0;
-		double V_Single_sum=0, V_Single_sqr_sum=0;
+        //calculate expected cost by simulation
+        //average over RUN=10,000,000 runs
+        double V_Multi_sum=0, V_Multi_sqr_sum=0;
+        double V_Single_sum=0, V_Single_sqr_sum=0;
 
-		//for semivariance
-		vector<double> profit_M(RUN+1);
-		vector<double> profit_S(RUN+1);
+        //for semivariance
+        vector<double> profit_M(RUN+1);
+        vector<double> profit_S(RUN+1);
 
-		//Parallelize the simulation
+        //Parallelize the simulation
         #pragma omp parallel for schedule(static) reduction(+:V_Multi_sum,V_Multi_sqr_sum,V_Single_sum, V_Single_sqr_sum)
         for (unsigned int j=1; j<=RUN; j++)
         {
             vector<double> epsilon(N+2);            //simulated sample path of signals
 
-			//generate signals epsilon[]
+            //generate signals epsilon[]
             epsilon[0] = 0;
             epsilon[1] = 0;
-            
+
             for (int ii=2;ii<=N+1;ii++)
                 epsilon[ii] =  stdev_epsilon[ii] * nd(re);
             
 
 
-			//multi-order case
-			vector<double> x(N+1), I(N+1), S(N+1);
-			double D, v_M=0;
+            //multi-order case
+            vector<double> x(N+1), I(N+1), S(N+1);
+            double D, v_M=0;
 
-			x[0] = 0;		//initial inventory
-			I[0] = 0;		//initial information
+            x[0] = 0;		//initial inventory
+            I[0] = 0;		//initial information
 
-			//place orders and incur ordering costs
-			for (int n=1;n<=N;n++)
-			{
-				I[n] = I[n-1] + epsilon[n];
-				S[n] = mu + I[n] + b[n];
+            //place orders and incur ordering costs
+            for (int n=1;n<=N;n++)
+            {
+                I[n] = I[n-1] + epsilon[n];
+                S[n] = mu + I[n] + b[n];
 
-				if (x[n-1] < S[n])
-				{
-					x[n] = S[n];
-					v_M -= c[n] * (x[n]-x[n-1]);
-				}
-				else
-					x[n] = x[n-1];
-			}
+                if (x[n-1] < S[n])
+                {
+                    x[n] = S[n];
+                    v_M -= c[n] * (x[n]-x[n-1]);
+                }
+                else
+                    x[n] = x[n-1];
+            }
 
-			//generate demand
-			D = mu + I[N] + epsilon[N+1];
-			//collect revenue
-			v_M += r * min(D,x[N]);
-
-
-			profit_M[j] = v_M;
-			V_Multi_sum += v_M;
-			V_Multi_sqr_sum += v_M*v_M;
+            //generate demand
+            D = mu + I[N] + epsilon[N+1];
+            //collect revenue
+            v_M += r * min(D,x[N]);
 
 
-			//single-order case
-			double v_S=0;
-			if (n_SingleOpt < N+1)
-			{
-				double S_Single = mu + I[n_SingleOpt] + b_Single[n_SingleOpt];
-				v_S = r * min(D,S_Single) - c[n_SingleOpt] * S_Single;
-			}
+            profit_M[j] = v_M;
+            V_Multi_sum += v_M;
+            V_Multi_sqr_sum += v_M*v_M;
 
-			profit_S[j] = v_S;
-			V_Single_sum += v_S;
-			V_Single_sqr_sum += v_S*v_S;
+
+            //single-order case
+            double v_S=0;
+            if (n_SingleOpt < N+1)
+            {
+                double S_Single = mu + I[n_SingleOpt] + b_Single[n_SingleOpt];
+                v_S = r * min(D,S_Single) - c[n_SingleOpt] * S_Single;
+            }
+
+            profit_S[j] = v_S;
+            V_Single_sum += v_S;
+            V_Single_sqr_sum += v_S*v_S;
         }
 
 
-		//calculate profit mean and variance
-		double mean_M = V_Multi_sum/RUN;					//E[v]
-		double mean_sqr_M = V_Multi_sqr_sum/RUN;			//E[v^2]
-		double var_M = (mean_sqr_M - mean_M*mean_M)*RUN/(RUN-1);	//sample variance
+        //calculate profit mean and variance
+        double mean_M = V_Multi_sum/RUN;					//E[v]
+        double mean_sqr_M = V_Multi_sqr_sum/RUN;			//E[v^2]
+        double var_M = (mean_sqr_M - mean_M*mean_M)*RUN/(RUN-1);	//sample variance
 
-		double mean_S = V_Single_sum/RUN;					//E[v]
-		double mean_sqr_S = V_Single_sqr_sum/RUN;			//E[v^2]
-		double var_S = (mean_sqr_S - mean_S*mean_S)*RUN/(RUN-1);	//sample variance
+        double mean_S = V_Single_sum/RUN;					//E[v]
+        double mean_sqr_S = V_Single_sqr_sum/RUN;			//E[v^2]
+        double var_S = (mean_sqr_S - mean_S*mean_S)*RUN/(RUN-1);	//sample variance
 
 
-		//calculate semi-variance
-		double semivar_MD=0, semivar_MU=0, semivar_SD=0, semivar_SU=0;
-		for (int j=1;j<=RUN;j++)
-		{
-			semivar_MD += pow(max(mean_M - profit_M[j],0.0), 2.0);
-			semivar_MU += pow(max(-mean_M + profit_M[j],0.0), 2.0);
-			semivar_SD += pow(max(mean_S - profit_S[j],0.0), 2.0);
-			semivar_SU += pow(max(-mean_S + profit_S[j],0.0), 2.0);
-		}
-		semivar_MD /= (RUN-1);
-		semivar_MU /= (RUN-1);
-		semivar_SD /= (RUN-1);
-		semivar_SU /= (RUN-1);
+        //calculate semi-variance
+        double semivar_MD=0, semivar_MU=0, semivar_SD=0, semivar_SU=0;
+        for (int j=1;j<=RUN;j++)
+        {
+            semivar_MD += pow(max(mean_M - profit_M[j],0.0), 2.0);
+            semivar_MU += pow(max(-mean_M + profit_M[j],0.0), 2.0);
+            semivar_SD += pow(max(mean_S - profit_S[j],0.0), 2.0);
+            semivar_SU += pow(max(-mean_S + profit_S[j],0.0), 2.0);
+        }
+        semivar_MD /= (RUN-1);
+        semivar_MU /= (RUN-1);
+        semivar_SD /= (RUN-1);
+        semivar_SU /= (RUN-1);
 
 
         
