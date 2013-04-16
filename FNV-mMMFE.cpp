@@ -1,13 +1,13 @@
 //============================================================================
-// Name        : FNV-aMMFE.cpp
+// Name        : FNV-mMMFE.cpp
 // Author      : Tong WANG
 // Email       : tong.wang@nus.edu.sg
 // Version     : v3.0 (2013-04-16)
 // Copyright   : ...
-// Description : code for the Forecasting Newsvendor model with additive MMFE
+// Description : code for the Forecasting Newsvendor model with multiplicative MMFE
 //============================================================================
 // Require the Boost C++ Library (http://www.boost.org/)
-// Compile: g++ -std=c++11 -fopenmp -O3 -I /usr/local/boost_1_53_0 -o FNV-aMMFE.exe FNV-aMMFE.cpp
+// Compile: g++ -std=c++11 -fopenmp -O3 -I /usr/local/boost_1_53_0 -o FNV-mMMFE.exe FNV-mMMFE.cpp
 //***********************************************************
 
 #include <iostream>
@@ -96,7 +96,7 @@ double G(int nn, double x2, double II)
         for (int j=0; j<=2*K*STEP; j++)
         {
             double z = (double)j/STEP-K; //z follows standard normal
-            double d = mu + II + z*stdev_epsilon[N+1];  //d follows Normal
+            double d = exp(mu + II + z*stdev_epsilon[N+1]);  //d follows LogNormal
             out += min(x2, d)  * phi[j] ;
         }
 
@@ -127,7 +127,7 @@ double G(int nn, double x2, double II)
 double V( int nn, double x1, double II)
 {
 
-    double SS = mu + II + b[nn];
+    double SS = exp(mu + II + b[nn]);
     double out;
 
     if (x1 < SS)
@@ -151,12 +151,12 @@ int main(void)
     omp_set_num_threads(omp_get_num_procs());
 
     //Open output file
-    file.open("FNV-aMMFE.txt", fstream::app|fstream::out);
+    file.open("FNV-mMMFE.txt", fstream::app|fstream::out);
     
     if (! file)
     {
         //if fail to open the file
-        cerr << "can't open output file FNV-aMMFE.txt!" << endl;
+        cerr << "can't open output file FNV-mMMFE.txt!" << endl;
         exit(EXIT_FAILURE);
     }
 	
@@ -198,7 +198,7 @@ int main(void)
     T = 0.9;
     lambda = 0.2;
 
-    for (stdev=0.05; stdev<=0.32; stdev+=0.05)
+    for (stdev=0.1; stdev<=0.62; stdev+=0.1)
     for (T=0.1; T<=0.91; T+=0.1)
     for (lambda=0.02; lambda<=0.21; lambda+=0.02)
     {
@@ -237,8 +237,8 @@ int main(void)
         for(int n=N; n>=1; n--)
         {
             //search for b[n]
-            double lb = -20*mu;				//lower bound of y*
-            double ub = 20*mu;				//upper bound of y*
+            double lb = -50*mu;				//lower bound of y*
+            double ub = 50*mu;				//upper bound of y*
 
             double y,temp = 1;
 
@@ -282,8 +282,8 @@ int main(void)
             double z = quantile(stdNormal, 1-c[n]/r);
             
             b_Single[n] = z*stdev2;
-            
-            V_Single[n] =  (r-c[n])*mu - r*stdev2*phi[(int)((z+K)*STEP)];
+
+            V_Single[n] = r * exp(mu + var/2) * cdf(complement(stdNormal, stdev2-z));
         }
 
         //find the optimal time if single ordering
@@ -351,7 +351,7 @@ int main(void)
             for (int n=1;n<=N;n++)
             {
                 I[n] = I[n-1] + epsilon[n];
-                S[n] = mu + I[n] + b[n];
+                S[n] = exp(mu + I[n] + b[n]);
 
                 if (x[n-1] < S[n])
                 {
@@ -363,7 +363,7 @@ int main(void)
             }
 
             //generate demand
-            D = mu + I[N] + epsilon[N+1];
+            D = exp(mu + I[N] + epsilon[N+1]);
             //collect revenue
             v_M += r * min(D,x[N]);
 
@@ -373,13 +373,10 @@ int main(void)
             V_Multi_sqr_sum += v_M*v_M;
 
 
-            //single-order case
-            double v_S=0;
-            if (n_SingleOpt < N+1)
-            {
-                double S_Single = mu + I[n_SingleOpt] + b_Single[n_SingleOpt];
-                v_S = r * min(D,S_Single) - c[n_SingleOpt] * S_Single;
-            }
+			//single-order case
+            double S_Single = exp(mu + I[n_SingleOpt] + b_Single[n_SingleOpt]);
+            double v_S = r * min(D,S_Single) - c[n_SingleOpt] * S_Single;
+
 
             profit_S[j] = v_S;
             V_Single_sum += v_S;
