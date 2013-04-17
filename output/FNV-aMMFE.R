@@ -3,13 +3,13 @@
 # v1.0 (organized on 2013-04-17)
 #################
 
+#NEED TO FIRST SET R WORKING DIRECTORY TO WHERE THE FILES ARE LOCATED!!!
 setwd("/Users/buxx/Desktop/test/")
 
 #read the output file
 data <- read.table("FNV-aMMFE.txt", header=TRUE)#calculate the statistics:
 
 #percentage difference in expected profits of the Multi- and Single-ordering modelsdata$deltaPi <- 100*(data$mean_M - data$mean_S)/data$mean_S#percentage difference in Variance of the Multi- and Single-ordering modelsdata$deltaVar <- 100*(data$var_M - data$var_S)/data$var_S#calculate Coefficient of Variationdata$CV_M <- sqrt(data$var_M)/data$mean_Mdata$CV_S <- sqrt(data$var_S)/data$mean_S#percentage difference in Coefficient of Variation of the Multi- and Single-ordering modelsdata$deltaCV <- 100*(data$CV_M - data$CV_S)/data$CV_S#percentage difference in Positive Semi-Variance of the Multi- and Single-ordering modelsdata$deltaSemivarU <- 100*(data$semivar_MU - data$semivar_SU)/data$semivar_SU#percentage difference in Negative Semi-Variance of the Multi- and Single-ordering modelsdata$deltaSemivarD <- 100*(data$semivar_MD - data$semivar_SD)/data$semivar_SD#summarize the percentage difference to generate Table 1 of the papersummary(data[c('deltaPi', 'deltaVar', 'deltaCV', 'deltaSemivarD', 'deltaSemivarU')])
-
 
 
 
