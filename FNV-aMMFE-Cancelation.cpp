@@ -59,7 +59,7 @@ ofstream file;                          //output files
 //h() function in the paper, first order derivative of G()
 double h(int nn, double yy)
 {
-	double out=0;
+    double out=0;
     normal stdNormal;
     
     if (nn==N)
