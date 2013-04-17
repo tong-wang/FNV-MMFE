@@ -51,7 +51,7 @@ vector<double> stdev_epsilon(N+2);      //StDev of each additional piece of info
 //Decisions
 vector<double> b(N+1);                  //optimal safety stock levels in each period
 
-vector<double> k(N+1), d(N+1);
+vector<double> k(N+1), d(N+1);          //fixed ordering costs and the corresponding policy parameter
 
 ofstream file;                          //output files
 
@@ -66,9 +66,11 @@ double g(int nn, double yy)
         out = r * cdf(complement(stdNormal, yy/stdev_epsilon[N+1])) - c[N];
     else
     {
-        double ub= (yy - b[nn+1] + d[nn+1]) / stdev_epsilon[nn+1]; //upper limit of the integral
+        double ub= (yy - b[nn+1] + d[nn+1]) / stdev_epsilon[nn+1];      //upper limit of the integral
+        ub = min(ub, (double)K);
+        ub = max(ub, -(double)K);
 
-        for (int j=0; j<=min(2*K*STEP, (int)((ub+K)*STEP)); j++)
+        for (int j=0; j<=(ub+K)*STEP; j++)
             out += g(nn+1, yy-stdev_epsilon[nn+1]*((double)j/STEP-K)) * phi[j] ;
 
         out /= STEP;
@@ -97,8 +99,8 @@ double G(int nn, double x2, double II)
         //if in period N, calculate expected profit
         for (int j=0; j<=2*K*STEP; j++)
         {
-            double z = (double)j/STEP-K; //z follows standard normal
-            double d = mu + II + z*stdev_epsilon[N+1];  //d follows Normal
+            double z = (double)j/STEP-K;                        //z follows standard normal
+            double d = mu + II + z*stdev_epsilon[N+1];          //d follows Normal
             out += min(x2, d)  * phi[j] ;
         }
 
@@ -214,11 +216,11 @@ int main(void)
 
         //initialize cost parameters
         for (int n=2; n<=N; n++)
-            c[n] = c[n-1] + lambda; //c[1] + lambda*tau[n];
+            c[n] = c[n-1] + lambda;             //alternatively, c[1] + lambda*tau[n];
 
 		//fixed costs
         for (int n=1;n<=N;n++)
-			k[n] = 0.1; //(double)(N-n+1)/10;
+            k[n] = 0.1;                         //alternatively, (double)(N-n+1)/10;
 
         //initialize info parameters
         var = pow(stdev, 2.0);
@@ -263,16 +265,16 @@ int main(void)
             b[n] = y;
 
             //search d[n]
-			double dd, intg=0;
+            double dd, intg=0;
             
-			for (dd = 0; ;dd+=0.0001)
-			{
-				intg += g(n, b[n]-dd) ;
+            for (dd = 0; ;dd+=0.0001)
+            {
+                intg += g(n, b[n]-dd) ;
                 
-				if (intg * 0.0001 > k[n]) break;
-			}
+                if (intg * 0.0001 > k[n]) break;
+            }
             
-			d[n] = dd;
+            d[n] = dd;
 
             cout << b[n] << "\t" << d[n] << "\t";
             file << b[n] << "\t" << d[n] << "\t";
@@ -301,8 +303,8 @@ int main(void)
 
 
         // Initialize random number generator.
-        knuth_b re(12345);     //define a knuth_b random engine with seed 12345
-        normal_distribution<> nd;   //define a Normal distribution
+        knuth_b re(12345);                          //define a knuth_b random engine with seed 12345
+        normal_distribution<> nd;                   //define a Normal distribution
 
         //calculate expected cost by simulation
         //average over RUN=10,000,000 runs
@@ -364,9 +366,9 @@ int main(void)
 
 
         //calculate profit mean and variance
-        double mean_M = V_Multi_sum/RUN;					//E[v]
-        double mean_sqr_M = V_Multi_sqr_sum/RUN;			//E[v^2]
-        double var_M = (mean_sqr_M - mean_M*mean_M)*RUN/(RUN-1);	//sample variance
+        double mean_M = V_Multi_sum/RUN;                            //E[v]
+        double mean_sqr_M = V_Multi_sqr_sum/RUN;                    //E[v^2]
+        double var_M = (mean_sqr_M - mean_M*mean_M)*RUN/(RUN-1);    //sample variance
 
 
         //calculate semi-variance
