@@ -1,13 +1,13 @@
 //============================================================================
-// Name        : FNV-aMMFE.cpp
+// Name        : FNV-aMMFE-FixedCost.cpp
 // Author      : Tong WANG
 // Email       : tong.wang@nus.edu.sg
 // Version     : v3.0 (2013-04-16)
 // Copyright   : ...
-// Description : code for the Forecasting Newsvendor model with additive MMFE
+// Description : code for the Forecasting Newsvendor model with additive MMFE and fixed ordering costs
 //============================================================================
 // Require the Boost C++ Library (http://www.boost.org/)
-// Compile: g++ -std=c++11 -fopenmp -O3 -I /usr/local/boost_1_53_0 -o FNV-aMMFE.exe FNV-aMMFE.cpp
+// Compile: g++ -std=c++11 -fopenmp -O3 -I /usr/local/boost_1_53_0 -o FNV-aMMFE-FixedCost.exe FNV-aMMFE-FixedCost.cpp
 //***********************************************************
 
 #include <iostream>
@@ -51,6 +51,8 @@ vector<double> stdev_epsilon(N+2);      //StDev of each additional piece of info
 //Decisions
 vector<double> b(N+1);                  //optimal safety stock levels in each period
 
+vector<double> k(N+1), d(N+1);          //fixed ordering costs and the corresponding policy parameter
+
 ofstream file;                          //output files
 
 //***********************************************************
@@ -64,7 +66,7 @@ double g(int nn, double yy)
         out = r * cdf(complement(stdNormal, yy/stdev_epsilon[N+1])) - c[N];
     else
     {
-        double ub= (yy - b[nn+1]) / stdev_epsilon[nn+1];        //upper limit of the integral
+        double ub= (yy - b[nn+1] + d[nn+1]) / stdev_epsilon[nn+1];      //upper limit of the integral
         ub = min(ub, (double)K);
         ub = max(ub, -(double)K);
 
@@ -130,10 +132,11 @@ double V( int nn, double x1, double II)
 {
 
     double SS = mu + II + b[nn];
+	double ss = SS - d[nn];
     double out;
 
-    if (x1 < SS)
-        out = G(nn,SS,II) + c[nn]*x1;
+    if (x1 < ss)
+        out = G(nn,SS,II) - k[nn] + c[nn]*x1;
     else
         out = G(nn,x1,II) + c[nn]*x1 ;
 
@@ -153,12 +156,12 @@ int main(void)
     omp_set_num_threads(omp_get_num_procs());
 
     //Open output file
-    file.open("FNV-aMMFE.txt", fstream::app|fstream::out);
+    file.open("FNV-aMMFE-FixedCost.txt", fstream::app|fstream::out);
     
     if (! file)
     {
         //if fail to open the file
-        cerr << "can't open output file FNV-aMMFE.txt!" << endl;
+        cerr << "can't open output file FNV-aMMFE-FixedCost.txt!" << endl;
         exit(EXIT_FAILURE);
     }
 	
@@ -177,18 +180,18 @@ int main(void)
 	
     for (int n=1; n<=N; n++)
     {
-        cout << "t" << n << "\tc" << n << "\t";
-        file << "t" << n << "\tc" << n << "\t";
+        cout << "t" << n << "\tc" << n << "\tk" << n << "\t";
+        file << "t" << n << "\tc" << n << "\tk" << n << "\t";
     }
 	
     for (int n=N; n>=1; n--)
     {
-        cout << "b" << n << "\t";
-        file << "b" << n << "\t";
+        cout << "b" << n << "\t" << "d" << n << "\t";
+        file << "b" << n << "\t" << "d" << n << "\t";
     }
 	
-    cout << "V_M\tn_S\tb_S\tV_S\tDP_Time\tmean_M\tvar_M\tsemivar_MD\tsemivar_MU\tmean_S\tvar_S\tsemivar_SD\tsemivar_SU\tTotalTime" << endl;
-    file << "V_M\tn_S\tb_S\tV_S\tDP_Time\tmean_M\tvar_M\tsemivar_MD\tsemivar_MU\tmean_S\tvar_S\tsemivar_SD\tsemivar_SU\tTotalTime\n" << endl;
+    cout << "V_M\tDP_Time\tmean_M\tvar_M\tsemivar_MD\tsemivar_MU\tTotalTime" << endl;
+    file << "V_M\tDP_Time\tmean_M\tvar_M\tsemivar_MD\tsemivar_MU\tTotalTime" << endl;
 
 
     //initialize parameters
@@ -213,7 +216,11 @@ int main(void)
 
         //initialize cost parameters
         for (int n=2; n<=N; n++)
-            c[n] = c[n-1] + lambda;         //alternatively, c[1] + lambda*tau[n];
+            c[n] = c[n-1] + lambda;             //alternatively, c[1] + lambda*tau[n];
+
+		//fixed costs
+        for (int n=1;n<=N;n++)
+            k[n] = 0.1;                         //alternatively, (double)(N-n+1)/10;
 
         //initialize info parameters
         var = pow(stdev, 2.0);
@@ -227,8 +234,8 @@ int main(void)
 		
         for (int n=1; n<=N; n++)
         {
-            cout << tau[n] << "\t" << c[n] << "\t";
-            file << tau[n] << "\t" << c[n] << "\t";
+            cout << tau[n] << "\t" << c[n] << "\t" << k[n] << "\t";
+            file << tau[n] << "\t" << c[n] << "\t" << k[n] << "\t";
         }
 
 
@@ -257,8 +264,20 @@ int main(void)
 
             b[n] = y;
 
-            cout << b[n] << "\t";
-            file << b[n] << "\t";
+            //search d[n]
+            double dd, intg=0;
+            
+            for (dd = 0; ;dd+=0.0001)
+            {
+                intg += g(n, b[n]-dd) ;
+                
+                if (intg * 0.0001 > k[n]) break;
+            }
+            
+            d[n] = dd;
+
+            cout << b[n] << "\t" << d[n] << "\t";
+            file << b[n] << "\t" << d[n] << "\t";
         }
 
 
@@ -269,38 +288,7 @@ int main(void)
         file << V_opt << "\t";
 
 
-        
-        
-        //Single-ordering model
-        vector<double> b_Single(N+1);       //optimal safety stock levels in Single-ordering model
-        vector<double> V_Single(N+2);       //optimal profit in the Single-order case, if order in a particular period $n$
-        double V_SingleOpt;                 //optimal profit of the Single-order case, over all period
-        int n_SingleOpt;                    //optimal ordering period of the Single-order case
-
-        for (int n=N; n>=1; n--)
-        {
-            normal stdNormal;
-            double stdev2 = sqrt(1-tau[n]) * stdev;
-            double z = quantile(stdNormal, 1-c[n]/r);
-            
-            b_Single[n] = z*stdev2;
-            
-            V_Single[n] =  (r-c[n])*mu - r*stdev2*phi[(int)((z+K)*STEP)];
-        }
-
-        //find the optimal time if single ordering
-        V_Single[N+1] = 0;
-        V_SingleOpt = -1;
-        for (int n=N+1; n>=1; n--)
-            if (V_Single[n] > V_SingleOpt)
-            {
-                V_SingleOpt = V_Single[n];
-                n_SingleOpt = n;
-            }
-        
-        cout << n_SingleOpt << "\t" << b_Single[n_SingleOpt] << "\t" << V_SingleOpt << "\t";
-        file << n_SingleOpt << "\t" << b_Single[n_SingleOpt] << "\t" << V_SingleOpt << "\t";
-
+    
 
         double DP_endTime = omp_get_wtime();
 
@@ -321,14 +309,12 @@ int main(void)
         //calculate expected cost by simulation
         //average over RUN=10,000,000 runs
         double V_Multi_sum=0, V_Multi_sqr_sum=0;
-        double V_Single_sum=0, V_Single_sqr_sum=0;
 
         //for semivariance
         vector<double> profit_M(RUN);
-        vector<double> profit_S(RUN);
 
         //Parallelize the simulation
-        #pragma omp parallel for schedule(static) reduction(+:V_Multi_sum,V_Multi_sqr_sum,V_Single_sum, V_Single_sqr_sum)
+        #pragma omp parallel for schedule(static) reduction(+:V_Multi_sum,V_Multi_sqr_sum)
         for (unsigned int j=0; j<RUN; j++)
         {
             vector<double> epsilon(N+2);            //simulated sample path of signals
@@ -343,7 +329,7 @@ int main(void)
 
 
             //multi-order case
-            vector<double> x(N+1), I(N+1), S(N+1);
+            vector<double> x(N+1), I(N+1), S(N+1), s(N+1);
             double D, v_M=0;
 
             x[0] = 0;		//initial inventory
@@ -354,11 +340,12 @@ int main(void)
             {
                 I[n] = I[n-1] + epsilon[n];
                 S[n] = mu + I[n] + b[n];
+				s[n] = S[n] - d[n];
 
-                if (x[n-1] < S[n])
+                if (x[n-1] < s[n])
                 {
                     x[n] = S[n];
-                    v_M -= c[n] * (x[n]-x[n-1]);
+                    v_M -= c[n] * (x[n]-x[n-1])  + k[n];
                 }
                 else
                     x[n] = x[n-1];
@@ -375,17 +362,6 @@ int main(void)
             V_Multi_sqr_sum += v_M*v_M;
 
 
-            //single-order case
-            double v_S=0;
-            if (n_SingleOpt < N+1)
-            {
-                double S_Single = mu + I[n_SingleOpt] + b_Single[n_SingleOpt];
-                v_S = r * min(D,S_Single) - c[n_SingleOpt] * S_Single;
-            }
-
-            profit_S[j] = v_S;
-            V_Single_sum += v_S;
-            V_Single_sqr_sum += v_S*v_S;
         }
 
 
@@ -394,24 +370,16 @@ int main(void)
         double mean_sqr_M = V_Multi_sqr_sum/RUN;                    //E[v^2]
         double var_M = (mean_sqr_M - mean_M*mean_M)*RUN/(RUN-1);    //sample variance
 
-        double mean_S = V_Single_sum/RUN;                           //E[v]
-        double mean_sqr_S = V_Single_sqr_sum/RUN;                   //E[v^2]
-        double var_S = (mean_sqr_S - mean_S*mean_S)*RUN/(RUN-1);    //sample variance
-
 
         //calculate semi-variance
-        double semivar_MD=0, semivar_MU=0, semivar_SD=0, semivar_SU=0;
+        double semivar_MD=0, semivar_MU=0;
         for (int j=0;j<RUN;j++)
         {
             semivar_MD += pow(max(mean_M - profit_M[j],0.0), 2.0);
             semivar_MU += pow(max(-mean_M + profit_M[j],0.0), 2.0);
-            semivar_SD += pow(max(mean_S - profit_S[j],0.0), 2.0);
-            semivar_SU += pow(max(-mean_S + profit_S[j],0.0), 2.0);
         }
         semivar_MD /= (RUN-1);
         semivar_MU /= (RUN-1);
-        semivar_SD /= (RUN-1);
-        semivar_SU /= (RUN-1);
 
 
         
@@ -419,9 +387,6 @@ int main(void)
         //output sample mean profit and confidence interval
         cout << mean_M << "\t" << var_M << "\t" << semivar_MD << "\t" << semivar_MU << "\t";
         file << mean_M << "\t" << var_M << "\t" << semivar_MD << "\t" << semivar_MU << "\t";
-
-        cout << mean_S << "\t" << var_S << "\t" << semivar_SD << "\t" << semivar_SU << "\t";
-        file << mean_S << "\t" << var_S << "\t" << semivar_SD << "\t" << semivar_SU << "\t";
 
 
         double endTime = omp_get_wtime();

@@ -188,7 +188,7 @@ int main(void)
     }
 	
     cout << "V_M\tn_S\tb_S\tV_S\tDP_Time\tmean_M\tvar_M\tsemivar_MD\tsemivar_MU\tmean_S\tvar_S\tsemivar_SD\tsemivar_SU\tTotalTime" << endl;
-    file << "V_M\tn_S\tb_S\tV_S\tDP_Time\tmean_M\tvar_M\tsemivar_MD\tsemivar_MU\tmean_S\tvar_S\tsemivar_SD\tsemivar_SU\tTotalTime\n" << endl;
+    file << "V_M\tn_S\tb_S\tV_S\tDP_Time\tmean_M\tvar_M\tsemivar_MD\tsemivar_MU\tmean_S\tvar_S\tsemivar_SD\tsemivar_SU\tTotalTime" << endl;
 
 
     //initialize parameters
