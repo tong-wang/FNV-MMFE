@@ -5,7 +5,7 @@ FNV-MMFE
     Author:         Tong WANG
     Email:          tong.wang@nus.edu.sg
     Version:        v3.0 (originally written in 2011, reorganised and published on 2013-04-17)
-    Copyright:      absolutely free (In case you find the code helpful in any sense and do not know how to express your appreciation, cite our paper below :)
+    Copyright:      MIT License
     Description:
                     This repository hosts codes for the numerical experiments conducted in the paper "A Multiordering Newsvendor Model with Dynamic Forecast Evolution."
 
@@ -51,3 +51,18 @@ Instructions
     The R scripts require a working R environment (http://www.r-project.org/). The scripts are only tested on R version 2.15, but should be running smoothly on newer versions. The scripts do not require extra R packages.
 
 
+[![DOI](https://zenodo.org/badge/doi/10.5281/zenodo.9933.png)](https://zenodo.org/record/9933/)
+
+
+
+
+============================================================================
+The MIT License (MIT)
+
+    Copyright (c) [2014] [Tong Wang]
+
+    Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation  files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
